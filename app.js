@@ -206,6 +206,26 @@ function markDone(name) {
   }
 }
 
+// ── Undo Assign ──────────────────────────────────────────────
+function undoAssign(name) {
+  const idx = state.assigned.findIndex(a => a.name === name);
+  if (idx === -1) return;
+
+  const removed = state.assigned.splice(idx, 1)[0];
+
+  // Recalculate nextDate
+  if (state.assigned.length > 0) {
+    const lastDate = state.assigned[state.assigned.length - 1].date;
+    state.nextDate = addDays(lastDate, 1);
+  } else {
+    state.nextDate = removed.date; // go back to removed person's date
+  }
+
+  saveState();
+  renderAll();
+  toast('↩️', `Đã hủy phân công: ${name}`);
+}
+
 // ── Computed ─────────────────────────────────────────────────
 function getPending() {
   const assignedNames = new Set(state.assigned.map(a => a.name));
@@ -309,6 +329,7 @@ function renderDone() {
       <span class="duty-row-num">${i + 1}</span>
       <span class="duty-row-name">${escHtml(a.name)}</span>
       <span class="duty-row-date">${formatDateVN(a.date)}</span>
+      <button class="btn-undo" onclick="undoAssign('${escAttr(a.name)}')" title="Hủy phân công">↩️</button>
     </div>
   `).join('');
 }
