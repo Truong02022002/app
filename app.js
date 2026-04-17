@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (hash.startsWith('#cloud-admin=')) {
         API_URL = decodeURIComponent(atob(hash.slice(13)));
         localStorage.setItem('duty_api_url', API_URL);
-        history.replaceState(null, '', window.location.pathname);
+        history.replaceState(null, '', window.location.pathname + '?r=' + currentRoom);
         toast('☁️', 'Đã kết nối Cloud với quyền Quản lý');
         startCloudSync();
       } else if (hash.startsWith('#view=')) {
