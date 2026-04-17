@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phân Công Trực – Quản Lý Ca Trực Nhân Viên</title>
+  <meta name="description" content="Ứng dụng phân công ca trực nhân viên tự động theo ngày. Tự reset khi hết vòng." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=3" />
+</head>
+
+<body>
+
+  <!-- Background effects -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- App shell -->
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">🗓️</span>
+          <div>
+            <h1 class="logo-title">Phân Công Trực</h1>
+            <p class="logo-sub">Quản lý ca trực nhân viên</p>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="round-badge" id="round-badge" style="display:none">Vòng 1</span>
+        <div class="header-date" id="header-date"></div>
+        <button class="btn-help" id="btn-help" title="Hướng dẫn sử dụng">❓</button>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="main-content">
+
+      <!-- Card: Nhập danh sách + ngày bắt đầu -->
+      <section class="card card-input" id="section-input">
+        <div class="card-glow"></div>
+        <h2 class="card-title">
+          <span class="title-icon">📋</span>
+          Danh sách nhân viên trực
+        </h2>
+        <p class="card-desc">
+          Nhập danh sách tên nhân viên (mỗi tên 1 dòng) và chọn ngày bắt đầu trực.
+          Click <strong>✅</strong> để phân công – ngày tự động tăng dần.
+        </p>
+
+        <div class="input-row">
+          <div class="input-group input-group-grow">
+            <label class="input-label" for="duty-input">Danh sách nhân viên</label>
+            <textarea id="duty-input" class="duty-textarea"
+              placeholder="Nhập tên, mỗi người 1 dòng&#10;VD:&#10;Chuột&#10;Phụng&#10;Đan&#10;Su&#10;Thảo"
+              rows="5"></textarea>
+          </div>
+          <div class="input-group input-group-date">
+            <label class="input-label" for="start-date">Ngày bắt đầu</label>
+            <input type="date" id="start-date" class="date-input" />
+            <p class="input-hint">Người đầu tiên sẽ trực ngày này</p>
+          </div>
+        </div>
+
+        <div class="input-actions">
+          <button class="btn btn-primary" id="btn-import">
+            <span class="btn-icon">📥</span> Nhập danh sách
+          </button>
+          <button class="btn btn-danger-outline" id="btn-clear-all">
+            <span class="btn-icon">🗑️</span> Xóa tất cả
+          </button>
+        </div>
+      </section>
+
+      <!-- KPI Cards -->
+      <section class="kpi-strip" id="kpi-strip" style="display:none">
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-blue">👥</div>
+          <div class="kpi-info">
+            <span class="kpi-value" id="kpi-total">0</span>
+            <span class="kpi-label">Tổng NV</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-green">✅</div>
+          <div class="kpi-info">
+            <span class="kpi-value" id="kpi-done">0</span>
+            <span class="kpi-label">Đã phân công</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-orange">⏳</div>
+          <div class="kpi-info">
+            <span class="kpi-value" id="kpi-pending">0</span>
+            <span class="kpi-label">Chưa trực</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-icon-purple">📅</div>
+          <div class="kpi-info">
+            <span class="kpi-value" id="kpi-next-date">--</span>
+            <span class="kpi-label">Ngày kế tiếp</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress bar -->
+      <section class="progress-section" id="progress-section" style="display:none">
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <p class="progress-text" id="progress-text">0 / 0 đã phân công</p>
+      </section>
+
+      <!-- Two columns: Chưa trực / Phân công trực -->
+      <section class="duty-columns" id="duty-columns" style="display:none">
+
+        <!-- Cột trái: Chưa trực -->
+        <div class="card col-card col-pending">
+          <div class="col-header">
+            <h2 class="col-title">
+              <span class="title-icon">⏳</span>
+              Chưa trực
+              <span class="badge badge-pending" id="badge-pending">0</span>
+            </h2>
+          </div>
+          <div class="duty-list" id="list-pending">
+            <div class="empty-state">
+              <span class="empty-icon">🎉</span>
+              <p>Tất cả đã được phân công!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cột phải: Phân công trực -->
+        <div class="card col-card col-done">
+          <div class="col-header">
+            <h2 class="col-title">
+              <span class="title-icon">📋</span>
+              Phân công trực
+              <span class="badge badge-done" id="badge-done">0</span>
+            </h2>
+            <button class="btn btn-sm btn-outline" id="btn-export">
+              <span class="btn-icon">📋</span> Copy
+            </button>
+          </div>
+          <div class="duty-list duty-list-done" id="list-done">
+            <div class="empty-state">
+              <span class="empty-icon">📭</span>
+              <p>Chưa phân công ai</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lịch sử các vòng trực -->
+      <section class="card history-section" id="history-section" style="display:none">
+        <div class="card-glow"></div>
+        <h2 class="card-title">
+          <span class="title-icon">📜</span>
+          Lịch sử các vòng trực
+        </h2>
+        <div id="history-list"></div>
+      </section>
+
+    </main>
+
+    <!-- Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Help Modal -->
+    <div class="help-overlay" id="help-overlay">
+      <div class="help-modal">
+        <div class="help-modal-header">
+          <h2>📖 Hướng dẫn sử dụng</h2>
+          <button class="help-close" id="help-close">&times;</button>
+        </div>
+        <div class="help-modal-body">
+          <div class="help-step">
+            <span class="help-step-num">1</span>
+            <div>
+              <h3>Nhập danh sách nhân viên</h3>
+              <p>Nhập tên nhân viên vào ô textarea, <strong>mỗi người 1 dòng</strong>. Chọn <strong>ngày bắt đầu</strong> trực rồi nhấn <strong>"Nhập danh sách"</strong>.</p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span class="help-step-num">2</span>
+            <div>
+              <h3>Phân công trực</h3>
+              <p>Nhấn nút <strong>✅</strong> bên cạnh tên nhân viên để phân công. Ngày trực sẽ <strong>tự động tăng</strong> theo thứ tự (17/04 → 18/04 → 19/04...).</p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span class="help-step-num">3</span>
+            <div>
+              <h3>Tự động reset khi hết vòng</h3>
+              <p>Khi <strong>tất cả nhân viên đã được phân công</strong>, hệ thống tự lưu vào lịch sử và reset danh sách. Ngày tiếp tục từ ngày kế tiếp.</p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span class="help-step-num">4</span>
+            <div>
+              <h3>Thêm nhân viên mới</h3>
+              <p>Nếu danh sách đã có, nhập thêm tên mới rồi nhấn <strong>"Nhập danh sách"</strong> – chỉ thêm người mới, <strong>không xóa</strong> người cũ.</p>
+            </div>
+          </div>
+          <div class="help-step">
+            <span class="help-step-num">5</span>
+            <div>
+              <h3>Copy & Lịch sử</h3>
+              <p>Nhấn <strong>"Copy"</strong> để sao chép danh sách phân công. Xem lại các vòng trước ở phần <strong>"Lịch sử các vòng trực"</strong>.</p>
+            </div>
+          </div>
+          <div class="help-note">
+            <span>💡</span>
+            <p>Dữ liệu được lưu trên trình duyệt. Không cần nhập lại khi mở lại trang (cùng trình duyệt, cùng thiết bị).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=5"></script>
+</body>
+
+</html>
