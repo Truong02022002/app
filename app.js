@@ -211,19 +211,28 @@ function undoAssign(name) {
   const idx = state.assigned.findIndex(a => a.name === name);
   if (idx === -1) return;
 
-  const removed = state.assigned.splice(idx, 1)[0];
+  const removedDate = state.assigned[idx].date;
+  state.assigned.splice(idx, 1);
+
+  // Recalculate dates: everyone from idx onward shifts back to fill the gap
+  for (let i = idx; i < state.assigned.length; i++) {
+    if (i === 0) {
+      state.assigned[i].date = removedDate; // take the removed person's date
+    } else {
+      state.assigned[i].date = addDays(state.assigned[i - 1].date, 1);
+    }
+  }
 
   // Recalculate nextDate
   if (state.assigned.length > 0) {
-    const lastDate = state.assigned[state.assigned.length - 1].date;
-    state.nextDate = addDays(lastDate, 1);
+    state.nextDate = addDays(state.assigned[state.assigned.length - 1].date, 1);
   } else {
-    state.nextDate = removed.date; // go back to removed person's date
+    state.nextDate = removedDate; // reset to the removed person's date
   }
 
   saveState();
   renderAll();
-  toast('↩️', `Đã hủy phân công: ${name}`);
+  toast('↩️', `Đã hủy phân công: ${name} – ngày đã cập nhật lại`);
 }
 
 // ── Computed ─────────────────────────────────────────────────
