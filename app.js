@@ -40,18 +40,23 @@ function saveState() {
 // ── Cloud Sync Functions ─────────────────────────────────────
 async function pushToCloud() {
   if (!API_URL) return;
+  
+  // Update timestamp when saving
+  state.updatedAt = new Date().toISOString();
+  
   try {
+    const payload = {
+      employees: state.employees,
+      assigned: state.assigned,
+      nextDate: state.nextDate,
+      round: state.round,
+      history: state.history,
+      updatedAt: state.updatedAt
+    };
     await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        employees: state.employees,
-        assigned: state.assigned,
-        nextDate: state.nextDate,
-        round: state.round,
-        history: state.history,
-        updatedAt: new Date().toISOString()
-      })
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
   } catch (e) {
     console.warn('Cloud sync failed:', e);
@@ -79,6 +84,12 @@ async function pullFromCloud() {
         }
         renderAll();
         return true;
+      } else {
+        // If cloud is empty but we are an admin with data, initialize the cloud
+        if (!isViewOnly && state.employees && state.employees.length > 0) {
+          pushToCloud();
+          return true;
+        }
       }
   } catch (e) {
     console.warn('Cloud pull failed:', e);
