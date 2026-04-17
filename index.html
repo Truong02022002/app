@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 
 <body>
@@ -36,6 +36,7 @@
       <div class="header-right">
         <span class="round-badge" id="round-badge" style="display:none">Vòng 1</span>
         <div class="header-date" id="header-date"></div>
+        <button class="btn-help" id="btn-cloud" title="Kết nối Cloud (Đồng bộ)">☁️</button>
         <button class="btn-help" id="btn-help" title="Hướng dẫn sử dụng">❓</button>
       </div>
     </header>
@@ -283,9 +284,62 @@
         </div>
       </div>
     </div>
+
+    <!-- Cloud Modal -->
+    <div class="modal-overlay" id="cloud-overlay">
+      <div class="modal cloud-modal">
+        <button class="modal-close" id="cloud-close">✕</button>
+        <div class="modal-header">
+          <div class="modal-icon bubble">☁️</div>
+          <h2 class="modal-title">Đồng Bộ Cloud</h2>
+          <p class="modal-sub">Dùng Google Apps Script để đồng bộ real-time nhiều thiết bị.</p>
+        </div>
+        <div class="modal-body" style="text-align:left;">
+          <label style="font-size:0.85rem; font-weight:600; margin-bottom:6px; display:block;">URL Apps Script (API_URL):</label>
+          <input type="text" id="cloud-url-input" class="input-text" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; margin-bottom:12px;">
+          <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.5; margin-bottom:16px;">
+            * Nếu bạn đã tự triển khai API (xem file <b>apps-script.js</b>), hãy dán link vào đây. <br>
+            * Ngay khi dán, dữ liệu sẽ tự đồng bộ mỗi 5 giây.
+          </div>
+          <button class="btn w-100" id="btn-save-cloud" style="background:var(--accent);">Lưu Kết Nối</button>
+          
+          <div id="cloud-status" style="margin-top:16px; font-size:0.8rem; font-weight:600; text-align:center;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="share-overlay">
+      <div class="modal share-modal" style="text-align: left;">
+        <button class="modal-close" id="share-close">✕</button>
+        <div class="modal-header">
+          <div class="modal-icon bubble">🔗</div>
+          <h2 class="modal-title" style="text-align:center;">Chia Sẻ Phân Công</h2>
+          <p class="modal-sub" style="text-align:center;">Gửi link để quản lý chung hoặc cho nhân viên tự xem ngày trực.</p>
+        </div>
+        <div class="modal-body">
+          <div class="help-btn-row">
+            <div class="help-btn-demo blue">👀 Chỉ xem</div>
+            <div>
+              <h3>Link cho Nhân Viên</h3>
+              <p>Họ chỉ xem được danh sách, không thể thay đổi người trực.</p>
+              <button class="btn btn-sm btn-outline" id="btn-copy-viewer" style="margin-top:8px;">Copy Link Xem</button>
+            </div>
+          </div>
+          <div class="help-btn-row" style="margin-top: 10px;">
+            <div class="help-btn-demo danger">✏️ Quản lý</div>
+            <div>
+              <h3>Link cho Đồng quản trị</h3>
+              <p>Có đầy đủ tính năng phân công, hủy, reset y như bạn.</p>
+              <button class="btn btn-sm btn-outline" id="btn-copy-admin" style="margin-top:8px; border-color:var(--red); color:var(--red);">Copy Link Quản trị</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 
 </html>

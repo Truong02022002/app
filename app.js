@@ -5,8 +5,14 @@
 
 const STORAGE_KEY = 'duty_roster_v2';
 
+// ── Cloud Sync (Google Apps Script) ──────────────────────────
+let API_URL = localStorage.getItem('duty_api_url') || '';
+const SYNC_INTERVAL = 5000; // Auto-refresh every 5 seconds if connected
+
 // ── State ────────────────────────────────────────────────────
 let state = loadState();
+let isViewOnly = false;
+let syncIntervalId = null;
 
 function defaultState() {
   return {
@@ -28,6 +34,56 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  pushToCloud(); // sync to cloud
+}
+
+// ── Cloud Sync Functions ─────────────────────────────────────
+async function pushToCloud() {
+  if (!API_URL) return;
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employees: state.employees,
+        assigned: state.assigned,
+        nextDate: state.nextDate,
+        round: state.round,
+        history: state.history,
+        updatedAt: new Date().toISOString()
+      })
+    });
+  } catch (e) {
+    console.warn('Cloud sync failed:', e);
+  }
+}
+
+async function pullFromCloud() {
+  if (!API_URL) return false;
+  try {
+    const res = await fetch(API_URL + '?t=' + Date.now());
+    const data = await res.json();
+      if (data && data.updatedAt) {
+        // Prevent unnecessary re-renders if no changes
+        if (state.updatedAt === data.updatedAt) return true;
+        
+        state.employees = data.employees || [];
+        state.assigned = data.assigned || [];
+        state.nextDate = data.nextDate || '';
+        state.round = data.round || 1;
+        state.history = data.history || [];
+        state.updatedAt = data.updatedAt;
+        
+        if (!isViewOnly) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        renderAll();
+        return true;
+      }
+  } catch (e) {
+    console.warn('Cloud pull failed:', e);
+  }
+  return false;
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -88,7 +144,18 @@ const helpClose      = $('help-close');
 const btnShare       = $('btn-share');
 const viewOnlyBanner = $('view-only-banner');
 
-let isViewOnly = false;
+// Modals
+const cloudOverlay   = $('cloud-overlay');
+const cloudClose     = $('cloud-close');
+const btnCloud       = $('btn-cloud');
+const cloudUrlInput  = $('cloud-url-input');
+const btnSaveCloud   = $('btn-save-cloud');
+const cloudStatus    = $('cloud-status');
+
+const shareOverlay   = $('share-overlay');
+const shareClose     = $('share-close');
+const btnCopyViewer  = $('btn-copy-viewer');
+const btnCopyAdmin   = $('btn-copy-admin');
 
 // ── Init ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -97,19 +164,34 @@ document.addEventListener('DOMContentLoaded', () => {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
   });
 
-  // Check for shared view-only link
+  // Check for hash routes
   const hash = window.location.hash;
-  if (hash && hash.startsWith('#view=')) {
+  if (hash) {
     try {
-      const encoded = hash.slice(6); // remove '#view='
-      const json = decodeURIComponent(atob(encoded));
-      const shared = JSON.parse(json);
-      state = { ...defaultState(), ...shared };
-      isViewOnly = true;
-      enterViewOnlyMode();
+      if (hash.startsWith('#cloud-view=')) {
+        API_URL = decodeURIComponent(atob(hash.slice(12)));
+        isViewOnly = true;
+        enterViewOnlyMode();
+        startCloudSync();
+      } else if (hash.startsWith('#cloud-admin=')) {
+        API_URL = decodeURIComponent(atob(hash.slice(13)));
+        localStorage.setItem('duty_api_url', API_URL);
+        history.replaceState(null, '', window.location.pathname);
+        toast('☁️', 'Đã kết nối Cloud với quyền Quản lý');
+        startCloudSync();
+      } else if (hash.startsWith('#view=')) {
+        const encoded = hash.slice(6);
+        const json = decodeURIComponent(atob(encoded));
+        state = { ...defaultState(), ...JSON.parse(json) };
+        isViewOnly = true;
+        enterViewOnlyMode();
+      }
     } catch (e) {
-      toast('⚠️', 'Link chia sẻ không hợp lệ');
+      toast('⚠️', 'Link không hợp lệ');
     }
+  } else {
+    // Normal start, start sync if API config exists
+    if (API_URL) startCloudSync();
   }
 
   // Default start date = today
@@ -123,15 +205,66 @@ document.addEventListener('DOMContentLoaded', () => {
   btnImport.addEventListener('click', handleImport);
   btnClearAll.addEventListener('click', handleClearAll);
   btnExport.addEventListener('click', handleExport);
-  btnShare.addEventListener('click', handleShare);
-
-  // Help modal
-  btnHelp.addEventListener('click', () => helpOverlay.classList.add('open'));
-  helpClose.addEventListener('click', () => helpOverlay.classList.remove('open'));
-  helpOverlay.addEventListener('click', (e) => {
-    if (e.target === helpOverlay) helpOverlay.classList.remove('open');
+  // Cloud Modal
+  btnCloud.addEventListener('click', () => {
+    cloudUrlInput.value = API_URL;
+    cloudStatus.textContent = '';
+    cloudOverlay.classList.add('open');
   });
+  cloudClose.addEventListener('click', () => cloudOverlay.classList.remove('open'));
+  cloudOverlay.addEventListener('click', (e) => {
+    if (e.target === cloudOverlay) cloudOverlay.classList.remove('open');
+  });
+
+  btnSaveCloud.addEventListener('click', async () => {
+    const url = cloudUrlInput.value.trim();
+    if (url) {
+      API_URL = url;
+      localStorage.setItem('duty_api_url', API_URL);
+      cloudStatus.style.color = 'var(--text)';
+      cloudStatus.textContent = 'Đang kiểm tra kết nối...';
+      const ok = await pullFromCloud();
+      if (ok) {
+        cloudStatus.style.color = 'var(--green)';
+        cloudStatus.textContent = 'Kết nối thành công! Đã đồng bộ.';
+        startCloudSync();
+        toast('☁️', 'Kết nối Cloud thành công');
+      } else {
+        cloudStatus.style.color = 'var(--red)';
+        cloudStatus.textContent = 'Lỗi kết nối. Vui lòng kiểm tra lại URL Apps Script.';
+      }
+    } else {
+      API_URL = '';
+      localStorage.removeItem('duty_api_url');
+      if (syncIntervalId) clearInterval(syncIntervalId);
+      toast('☁️', 'Đã ngắt kết nối Cloud');
+      cloudOverlay.classList.remove('open');
+    }
+  });
+
+  // Share Modal
+  btnShare.addEventListener('click', () => {
+    if (!API_URL && state.assigned.length === 0) {
+      toast('⚠️', 'Chưa có ai được phân công để chia sẻ');
+      return;
+    }
+    shareOverlay.classList.add('open');
+  });
+  shareClose.addEventListener('click', () => shareOverlay.classList.remove('open'));
+  shareOverlay.addEventListener('click', (e) => {
+    if (e.target === shareOverlay) shareOverlay.classList.remove('open');
+  });
+
+  btnCopyViewer.addEventListener('click', () => handleAdvancedShare('view'));
+  btnCopyAdmin.addEventListener('click', () => handleAdvancedShare('admin'));
 });
+
+// ── Cloud Polling ───────────────────────────────────────────
+function startCloudSync() {
+  pullFromCloud(); // initial pull
+  if (syncIntervalId) clearInterval(syncIntervalId);
+  syncIntervalId = setInterval(pullFromCloud, SYNC_INTERVAL);
+}
 
 // ── View-Only Mode ───────────────────────────────────────────
 function enterViewOnlyMode() {
@@ -142,27 +275,36 @@ function enterViewOnlyMode() {
 }
 
 // ── Share ─────────────────────────────────────────────────────
-function handleShare() {
-  if (state.assigned.length === 0) {
-    toast('⚠️', 'Chưa có ai được phân công để chia sẻ');
-    return;
+function handleAdvancedShare(role) {
+  let url = window.location.origin + window.location.pathname;
+  
+  if (API_URL) {
+    // Cloud Share
+    const encoded = btoa(encodeURIComponent(API_URL));
+    url += (role === 'view') ? '#cloud-view=' + encoded : '#cloud-admin=' + encoded;
+  } else {
+    // Snapshot Share (Fallback)
+    if (role === 'admin') {
+      toast('⚠️', 'Cần kết nối Cloud để chia sẻ quyền Quản lý');
+      return;
+    }
+    const shareData = {
+      employees: state.employees,
+      assigned: state.assigned,
+      nextDate: state.nextDate,
+      round: state.round,
+      history: state.history
+    };
+    const json = JSON.stringify(shareData);
+    const encoded = btoa(encodeURIComponent(json));
+    url += '#view=' + encoded;
   }
 
-  const shareData = {
-    employees: state.employees,
-    assigned: state.assigned,
-    nextDate: state.nextDate,
-    round: state.round
-  };
-
-  const json = JSON.stringify(shareData);
-  const encoded = btoa(encodeURIComponent(json));
-  const url = window.location.origin + window.location.pathname + '#view=' + encoded;
-
   navigator.clipboard.writeText(url).then(() => {
-    toast('🔗', 'Đã sao chép link chia sẻ (chế độ xem)!');
+    const roleText = role === 'view' ? 'Chỉ xem' : 'Quản lý';
+    toast('🔗', `Đã copy link (${roleText})!`);
+    shareOverlay.classList.remove('open');
   }).catch(() => {
-    // Fallback
     prompt('Sao chép link này:', url);
   });
 }
