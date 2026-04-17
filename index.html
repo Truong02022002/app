@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 
 <body>
@@ -183,51 +183,100 @@
           <button class="help-close" id="help-close">&times;</button>
         </div>
         <div class="help-modal-body">
+          <div class="help-section-title">🔧 Giải thích các nút</div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo green">✅</span>
+            <div>
+              <h3>Phân công trực</h3>
+              <p>Nhấn vào nút này bên cạnh tên nhân viên ở cột <strong>"Chưa trực"</strong> để phân công. Ngày trực <strong>tự động tăng</strong> (17/04 → 18/04 → 19/04...).</p>
+            </div>
+          </div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo red">↩️</span>
+            <div>
+              <h3>Hủy phân công</h3>
+              <p>Nhấn vào nút này ở cột <strong>"Phân công trực"</strong> để hủy. Nhân viên quay lại cột "Chưa trực", ngày phía sau <strong>tự dồn lên</strong> không bị trống.</p>
+            </div>
+          </div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo blue">📋 Nhập danh sách</span>
+            <div>
+              <h3>Nhập / Thêm nhân viên</h3>
+              <p>Nhập tên vào ô (<strong>mỗi người 1 dòng</strong>), chọn ngày bắt đầu → nhấn nút này. Nếu đã có danh sách, chỉ <strong>thêm người mới</strong>, không xóa người cũ.</p>
+            </div>
+          </div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo purple">📋 Copy</span>
+            <div>
+              <h3>Sao chép danh sách</h3>
+              <p>Nhấn để <strong>sao chép</strong> danh sách phân công (tên + ngày) vào clipboard. Dán vào Zalo, Word, Excel...</p>
+            </div>
+          </div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo danger">🗑️ Xóa tất cả</span>
+            <div>
+              <h3>Xóa toàn bộ dữ liệu</h3>
+              <p>Xóa <strong>hết</strong> danh sách, phân công, lịch sử. Dữ liệu mất hoàn toàn — hãy cẩn thận!</p>
+            </div>
+          </div>
+
+          <div class="help-btn-row">
+            <span class="help-btn-demo help-q">❓</span>
+            <div>
+              <h3>Mở hướng dẫn</h3>
+              <p>Nút ở <strong>góc phải trên</strong> — mở lại trang hướng dẫn này.</p>
+            </div>
+          </div>
+
+          <div class="help-section-title">📝 Các bước sử dụng</div>
+
           <div class="help-step">
             <span class="help-step-num">1</span>
             <div>
-              <h3>Nhập danh sách nhân viên</h3>
-              <p>Nhập tên nhân viên vào ô textarea, <strong>mỗi người 1 dòng</strong>. Chọn <strong>ngày bắt đầu</strong> trực rồi nhấn <strong>"Nhập danh sách"</strong>.</p>
+              <h3>Nhập danh sách</h3>
+              <p>Nhập tên nhân viên (mỗi dòng 1 tên) → Chọn ngày → Nhấn <span class="help-inline-btn blue">📋 Nhập danh sách</span></p>
             </div>
           </div>
+
           <div class="help-step">
             <span class="help-step-num">2</span>
             <div>
-              <h3>Phân công trực</h3>
-              <p>Nhấn nút <strong>✅</strong> bên cạnh tên nhân viên để phân công. Ngày trực sẽ <strong>tự động tăng</strong> theo thứ tự (17/04 → 18/04 → 19/04...).</p>
+              <h3>Phân công từng người</h3>
+              <p>Nhấn <span class="help-inline-btn green">✅</span> bên cạnh tên. Ngày tự tăng dần.</p>
             </div>
           </div>
+
           <div class="help-step">
             <span class="help-step-num">3</span>
             <div>
-              <h3>Tự động reset khi hết vòng</h3>
-              <p>Khi <strong>tất cả nhân viên đã được phân công</strong>, hệ thống tự lưu vào lịch sử và reset danh sách. Ngày tiếp tục từ ngày kế tiếp.</p>
+              <h3>Hủy nếu cần</h3>
+              <p>Nhấn <span class="help-inline-btn red">↩️</span> để hủy. Ngày dồn lên tự động.</p>
             </div>
           </div>
+
           <div class="help-step">
             <span class="help-step-num">4</span>
             <div>
-              <h3>Thêm nhân viên mới</h3>
-              <p>Nếu danh sách đã có, nhập thêm tên mới rồi nhấn <strong>"Nhập danh sách"</strong> – chỉ thêm người mới, <strong>không xóa</strong> người cũ.</p>
+              <h3>Hết vòng → Tự reset</h3>
+              <p>Khi tất cả đã phân công → hệ thống <strong>lưu vào lịch sử</strong> và reset. Vòng mới bắt đầu từ ngày kế tiếp.</p>
             </div>
           </div>
-          <div class="help-step">
-            <span class="help-step-num">5</span>
-            <div>
-              <h3>Copy & Lịch sử</h3>
-              <p>Nhấn <strong>"Copy"</strong> để sao chép danh sách phân công. Xem lại các vòng trước ở phần <strong>"Lịch sử các vòng trực"</strong>.</p>
-            </div>
-          </div>
+
           <div class="help-note">
             <span>💡</span>
-            <p>Dữ liệu được lưu trên trình duyệt. Không cần nhập lại khi mở lại trang (cùng trình duyệt, cùng thiết bị).</p>
+            <p>Dữ liệu lưu trên trình duyệt (localStorage). Không mất khi tắt trang. Nhưng sẽ mất nếu xóa dữ liệu trình duyệt hoặc đổi thiết bị.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 
 </html>
