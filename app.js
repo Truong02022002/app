@@ -306,7 +306,20 @@ function enterViewOnlyMode() {
   const sectionInput = $('section-input');
   if (sectionInput) sectionInput.style.display = 'none';
   document.body.classList.add('view-only');
+
+  // Hide the left column (Chưa trực) and expand right column to full width
+  const colPending = document.querySelector('.col-pending');
+  if (colPending) colPending.style.display = 'none';
+  const dutyCols = $('duty-columns');
+  if (dutyCols) dutyCols.style.gridTemplateColumns = '1fr';
+
+  // Hide action buttons in col-done
+  const btnExp = $('btn-export');
+  if (btnExp) btnExp.style.display = 'none';
+  const btnShr = $('btn-share');
+  if (btnShr) btnShr.style.display = 'none';
 }
+
 
 // ── Share ─────────────────────────────────────────────────────
 function handleAdvancedShare(role) {
