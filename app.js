@@ -3,7 +3,30 @@
    Auto-increment date, round-robin with reset
    ============================================================ */
 
-const STORAGE_KEY = 'duty_roster_v2';
+// Multi-tenant Room Logic
+const urlParams = new URLSearchParams(window.location.search);
+let currentRoom = urlParams.get('r');
+const hash = window.location.hash;
+
+if (!currentRoom) {
+  const hasLegacyHash = hash && (hash.startsWith('#cloud-') || hash.startsWith('#view='));
+  const hasOldData = !!localStorage.getItem('duty_roster_v2');
+
+  if (hasLegacyHash || hasOldData) {
+    currentRoom = 'default';
+  } else {
+    currentRoom = Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+  window.history.replaceState(null, '', '?r=' + currentRoom + hash);
+}
+
+const STORAGE_KEY = currentRoom === 'default' ? 'duty_roster_v2' : 'duty_roster_v2_' + currentRoom;
+
+function getApiUrlWithRoom() {
+  if (!API_URL) return '';
+  const sep = API_URL.includes('?') ? '&' : '?';
+  return `${API_URL}${sep}r=${currentRoom}`;
+}
 
 // ── Cloud Sync (Google Apps Script) ──────────────────────────
 let API_URL = localStorage.getItem('duty_api_url') || 'https://script.google.com/macros/s/AKfycbwe-odyE-4nUEPCg1dVN-_-MtGr4nYm6zpkFOipEVohbNF3-V_WFk48xkTAIrB5k1qO/exec';
@@ -53,7 +76,7 @@ async function pushToCloud() {
       history: state.history,
       updatedAt: state.updatedAt
     };
-    await fetch(API_URL, {
+    await fetch(getApiUrlWithRoom(), {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
@@ -66,7 +89,7 @@ async function pushToCloud() {
 async function pullFromCloud() {
   if (!API_URL) return false;
   try {
-    const res = await fetch(API_URL + '?t=' + Date.now());
+    const res = await fetch(getApiUrlWithRoom() + '&t=' + Date.now());
     const data = await res.json();
       if (data && data.updatedAt) {
         // Prevent unnecessary re-renders if no changes
@@ -287,7 +310,7 @@ function enterViewOnlyMode() {
 
 // ── Share ─────────────────────────────────────────────────────
 function handleAdvancedShare(role) {
-  let url = window.location.origin + window.location.pathname;
+  let url = window.location.origin + window.location.pathname + '?r=' + currentRoom;
   
   if (API_URL) {
     // Cloud Share
