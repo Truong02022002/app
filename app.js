@@ -85,6 +85,10 @@ const toastContainer = $('toast-container');
 const btnHelp        = $('btn-help');
 const helpOverlay    = $('help-overlay');
 const helpClose      = $('help-close');
+const btnShare       = $('btn-share');
+const viewOnlyBanner = $('view-only-banner');
+
+let isViewOnly = false;
 
 // ── Init ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -92,6 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
   headerDate.textContent = new Date().toLocaleDateString('vi-VN', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric'
   });
+
+  // Check for shared view-only link
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#view=')) {
+    try {
+      const encoded = hash.slice(6); // remove '#view='
+      const json = decodeURIComponent(atob(encoded));
+      const shared = JSON.parse(json);
+      state = { ...defaultState(), ...shared };
+      isViewOnly = true;
+      enterViewOnlyMode();
+    } catch (e) {
+      toast('⚠️', 'Link chia sẻ không hợp lệ');
+    }
+  }
 
   // Default start date = today
   startDateInput.value = state.nextDate || todayISO();
@@ -104,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnImport.addEventListener('click', handleImport);
   btnClearAll.addEventListener('click', handleClearAll);
   btnExport.addEventListener('click', handleExport);
+  btnShare.addEventListener('click', handleShare);
 
   // Help modal
   btnHelp.addEventListener('click', () => helpOverlay.classList.add('open'));
@@ -112,6 +132,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === helpOverlay) helpOverlay.classList.remove('open');
   });
 });
+
+// ── View-Only Mode ───────────────────────────────────────────
+function enterViewOnlyMode() {
+  viewOnlyBanner.style.display = 'flex';
+  const sectionInput = $('section-input');
+  if (sectionInput) sectionInput.style.display = 'none';
+  document.body.classList.add('view-only');
+}
+
+// ── Share ─────────────────────────────────────────────────────
+function handleShare() {
+  if (state.assigned.length === 0) {
+    toast('⚠️', 'Chưa có ai được phân công để chia sẻ');
+    return;
+  }
+
+  const shareData = {
+    employees: state.employees,
+    assigned: state.assigned,
+    nextDate: state.nextDate,
+    round: state.round
+  };
+
+  const json = JSON.stringify(shareData);
+  const encoded = btoa(encodeURIComponent(json));
+  const url = window.location.origin + window.location.pathname + '#view=' + encoded;
+
+  navigator.clipboard.writeText(url).then(() => {
+    toast('🔗', 'Đã sao chép link chia sẻ (chế độ xem)!');
+  }).catch(() => {
+    // Fallback
+    prompt('Sao chép link này:', url);
+  });
+}
 
 // ── Import ───────────────────────────────────────────────────
 function handleImport() {
@@ -313,12 +367,14 @@ function renderPending() {
     return;
   }
 
+  const doneBtn = isViewOnly ? '' : `<button class="btn-done" onclick="markDone('\${name}')" title="Phân công trực">✅</button>`;
+
   listPending.innerHTML = pending.map((name, i) => `
     <div class="duty-row" style="animation-delay:${i * .04}s">
       <span class="duty-row-num">${i + 1}</span>
       <span class="duty-row-name">${escHtml(name)}</span>
       <span class="duty-row-date">${formatDateVN(state.nextDate)}</span>
-      <button class="btn-done" onclick="markDone('${escAttr(name)}')" title="Phân công trực">✅</button>
+      ${isViewOnly ? '' : `<button class="btn-done" onclick="markDone('${escAttr(name)}')" title="Phân công trực">✅</button>`}
     </div>
   `).join('');
 }
@@ -338,7 +394,7 @@ function renderDone() {
       <span class="duty-row-num">${i + 1}</span>
       <span class="duty-row-name">${escHtml(a.name)}</span>
       <span class="duty-row-date">${formatDateVN(a.date)}</span>
-      <button class="btn-undo" onclick="undoAssign('${escAttr(a.name)}')" title="Hủy phân công">↩️</button>
+      ${isViewOnly ? '' : `<button class="btn-undo" onclick="undoAssign('${escAttr(a.name)}')" title="Hủy phân công">↩️</button>`}
     </div>
   `).join('');
 }

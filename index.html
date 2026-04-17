@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 
 <body>
@@ -39,6 +39,12 @@
         <button class="btn-help" id="btn-help" title="Hướng dẫn sử dụng">❓</button>
       </div>
     </header>
+
+    <!-- View-only banner (hidden by default) -->
+    <div class="view-only-banner" id="view-only-banner" style="display:none">
+      <span>👁️ Chế độ xem — Bạn chỉ có thể xem, không chỉnh sửa</span>
+      <a href="./" class="view-only-link">✏️ Mở trang quản lý</a>
+    </div>
 
     <!-- Main content -->
     <main class="main-content">
@@ -149,6 +155,9 @@
             </h2>
             <button class="btn btn-sm btn-outline" id="btn-export">
               <span class="btn-icon">📋</span> Copy
+            </button>
+            <button class="btn btn-sm btn-share" id="btn-share">
+              <span class="btn-icon">🔗</span> Chia sẻ
             </button>
           </div>
           <div class="duty-list duty-list-done" id="list-done">
@@ -276,7 +285,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 
 </html>

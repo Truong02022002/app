@@ -854,6 +854,63 @@ body {
 }
 
 /* ============================================================
+   VIEW-ONLY MODE & SHARE
+   ============================================================ */
+.view-only-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(59,130,246,.15), rgba(168,85,247,.15));
+  border: 1px solid rgba(59,130,246,.2);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+.view-only-link {
+  padding: 6px 14px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: .75rem;
+  font-weight: 700;
+  transition: all var(--transition);
+}
+.view-only-link:hover {
+  background: var(--purple);
+  transform: scale(1.03);
+}
+
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-share:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* Hide elements in view-only */
+body.view-only .btn-share { display: none; }
+body.view-only .btn-clear-section { display: none; }
+body.view-only #btn-export { display: inline-flex; }
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 700px) {
@@ -865,4 +922,5 @@ body {
   .duty-columns { grid-template-columns: 1fr; }
   .celebration-modal { padding: 28px 24px; }
   .help-modal { width: 95%; }
+  .view-only-banner { flex-direction: column; text-align: center; }
 }
