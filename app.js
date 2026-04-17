@@ -6,7 +6,7 @@
 const STORAGE_KEY = 'duty_roster_v2';
 
 // ── Cloud Sync (Google Apps Script) ──────────────────────────
-let API_URL = localStorage.getItem('duty_api_url') || '';
+let API_URL = localStorage.getItem('duty_api_url') || 'https://script.google.com/macros/s/AKfycbwe-odyE-4nUEPCg1dVN-_-MtGr4nYm6zpkFOipEVohbNF3-V_WFk48xkTAIrB5k1qO/exec';
 const SYNC_INTERVAL = 5000; // Auto-refresh every 5 seconds if connected
 
 // ── State ────────────────────────────────────────────────────
