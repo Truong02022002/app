@@ -461,6 +461,17 @@ body {
 .empty-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
 .empty-state p { font-size: .82rem; }
 
+/* Hidden entries indicator */
+.duty-row-hidden {
+  text-align: center;
+  padding: 8px 12px;
+  font-size: .75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 4px;
+}
+
 /* ============================================================
    HISTORY SECTION
    ============================================================ */
