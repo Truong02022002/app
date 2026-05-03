@@ -36,6 +36,8 @@ const SYNC_INTERVAL = 5000; // Auto-refresh every 5 seconds if connected
 let state = loadState();
 let isViewOnly = false;
 let syncIntervalId = null;
+let lastLocalSave = 0;           // timestamp of last local save
+const PULL_COOLDOWN = 4000;      // skip cloud pull within 4s of local save
 
 function defaultState() {
   return {
@@ -56,6 +58,7 @@ function loadState() {
 }
 
 function saveState() {
+  lastLocalSave = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   pushToCloud(); // sync to cloud
 }
@@ -88,6 +91,8 @@ async function pushToCloud() {
 
 async function pullFromCloud() {
   if (!API_URL) return false;
+  // Skip pull if we just saved locally (avoid overwriting with stale cloud data)
+  if (Date.now() - lastLocalSave < PULL_COOLDOWN) return true;
   try {
     const res = await fetch(getApiUrlWithRoom() + '&t=' + Date.now());
     const data = await res.json();
@@ -127,7 +132,9 @@ function formatDateVN(isoStr) {
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
-  return `${day}/${month}/${year}`;
+  const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  const dayOfWeek = dayNames[d.getDay()];
+  return `${dayOfWeek} - ${day}/${month}/${year}`;
 }
 
 function addDays(isoStr, n) {
@@ -424,24 +431,14 @@ function markDone(name) {
   // Advance nextDate by 1 day
   state.nextDate = addDays(assignDate, 1);
 
-  const pending = getPending();
-
-  if (pending.length === 0) {
-    // Round complete! Save to history then reset
-    state.history.push({
-      round: state.round,
-      items: [...state.assigned],
-      completedAt: new Date().toISOString()
-    });
-
-    const nextStartDate = state.nextDate; // already advanced
-    state.assigned = [];
+  // Check if a full cycle just completed (all employees assigned in this cycle)
+  const total = state.employees.length;
+  if (total > 0 && state.assigned.length % total === 0) {
+    const completedRound = state.round;
     state.round += 1;
-    state.nextDate = nextStartDate;
-
     saveState();
     renderAll();
-    showCelebration();
+    toast('🔄', `Hết vòng ${completedRound}! Danh sách chưa trực đã nạp lại – tiếp tục phân công.`);
   } else {
     saveState();
     renderAll();
@@ -450,10 +447,10 @@ function markDone(name) {
 }
 
 // ── Undo Assign ──────────────────────────────────────────────
-function undoAssign(name) {
-  const idx = state.assigned.findIndex(a => a.name === name);
-  if (idx === -1) return;
+function undoAssign(idx) {
+  if (idx < 0 || idx >= state.assigned.length) return;
 
+  const removedName = state.assigned[idx].name;
   const removedDate = state.assigned[idx].date;
   state.assigned.splice(idx, 1);
 
@@ -473,14 +470,27 @@ function undoAssign(name) {
     state.nextDate = removedDate; // reset to the removed person's date
   }
 
+  // Recalculate round based on current assignments
+  const total = state.employees.length;
+  if (total > 0) {
+    state.round = Math.floor(state.assigned.length / total) + 1;
+  }
+
   saveState();
   renderAll();
-  toast('↩️', `Đã hủy phân công: ${name} – ngày đã cập nhật lại`);
+  toast('↩️', `Đã hủy phân công: ${removedName} – ngày đã cập nhật lại`);
 }
 
 // ── Computed ─────────────────────────────────────────────────
 function getPending() {
-  const assignedNames = new Set(state.assigned.map(a => a.name));
+  const total = state.employees.length;
+  if (total === 0) return [];
+
+  // Only look at the CURRENT cycle (not all assignments)
+  // When assigned.length % total === 0, all employees are available again
+  const currentCycleCount = state.assigned.length % total;
+  const currentCycleAssigned = state.assigned.slice(state.assigned.length - currentCycleCount);
+  const assignedNames = new Set(currentCycleAssigned.map(a => a.name));
   return state.employees.filter(n => !assignedNames.has(n));
 }
 
@@ -519,23 +529,25 @@ function renderAll() {
   roundBadge.textContent = `Vòng ${state.round}`;
 
   const total = state.employees.length;
-  const done = state.assigned.length;
-  const pending = total - done;
-  const pct = Math.round((done / total) * 100);
+  const totalAssigned = state.assigned.length;
+  const pendingList = getPending();
+  const pendingCount = pendingList.length;
+  const doneInCycle = total - pendingCount;
+  const pct = total > 0 ? Math.round((doneInCycle / total) * 100) : 0;
 
   // KPI
   kpiTotal.textContent = total;
-  kpiDone.textContent = done;
-  kpiPending.textContent = pending;
+  kpiDone.textContent = totalAssigned;
+  kpiPending.textContent = pendingCount;
   kpiNextDate.textContent = formatDateVN(state.nextDate);
 
-  // Progress
-  progressFill.style.width = pct + '%';
-  progressText.textContent = `${done} / ${total} đã phân công (${pct}%)`;
+  // Progress (shows current cycle progress)
+  progressFill.style.width = Math.min(pct, 100) + '%';
+  progressText.textContent = `${totalAssigned} ngày đã phân công | Vòng hiện tại: ${doneInCycle}/${total} (${pct}%)`;
 
   // Badges
-  badgePending.textContent = pending;
-  badgeDone.textContent = done;
+  badgePending.textContent = pendingCount;
+  badgeDone.textContent = totalAssigned;
 
   // Sync start-date input
   startDateInput.value = state.nextDate;
@@ -578,14 +590,28 @@ function renderDone() {
     return;
   }
 
-  listDone.innerHTML = state.assigned.map((a, i) => `
+  // Only show the last 14 assignments
+  const MAX_DISPLAY = 14;
+  const all = state.assigned;
+  const startIdx = Math.max(0, all.length - MAX_DISPLAY);
+  const visible = all.slice(startIdx);
+
+  let html = '';
+  if (startIdx > 0) {
+    html += `<div class="duty-row-hidden">... và ${startIdx} ngày trước đó</div>`;
+  }
+  html += visible.map((a, i) => {
+    const realIdx = startIdx + i;
+    return `
     <div class="duty-row" style="animation-delay:${i * .04}s">
-      <span class="duty-row-num">${i + 1}</span>
+      <span class="duty-row-num">${realIdx + 1}</span>
       <span class="duty-row-name">${escHtml(a.name)}</span>
       <span class="duty-row-date">${formatDateVN(a.date)}</span>
-      ${isViewOnly ? '' : `<button class="btn-undo" onclick="undoAssign('${escAttr(a.name)}')" title="Hủy phân công">↩️</button>`}
-    </div>
-  `).join('');
+      ${isViewOnly ? '' : `<button class="btn-undo" onclick="undoAssign(${realIdx})" title="Hủy phân công">↩️</button>`}
+    </div>`;
+  }).join('');
+
+  listDone.innerHTML = html;
 }
 
 function renderHistory() {
