@@ -481,6 +481,17 @@ function undoAssign(idx) {
   toast('↩️', `Đã hủy phân công: ${removedName} – ngày đã cập nhật lại`);
 }
 
+// ── Remove Employee ──────────────────────────────────────────
+function removeEmployee(name) {
+  if (confirm(`Bạn có chắc chắn muốn xóa nhân viên "${name}" khỏi danh sách?`)) {
+    state.employees = state.employees.filter(n => n !== name);
+    state.assigned = state.assigned.filter(a => a.name !== name);
+    saveState();
+    renderAll();
+    toast('🗑️', `Đã xóa nhân viên: ${name}`);
+  }
+}
+
 // ── Computed ─────────────────────────────────────────────────
 function getPending() {
   const total = state.employees.length;
@@ -575,7 +586,10 @@ function renderPending() {
       <span class="duty-row-num">${i + 1}</span>
       <span class="duty-row-name">${escHtml(name)}</span>
       <span class="duty-row-date">${formatDateVN(state.nextDate)}</span>
-      ${isViewOnly ? '' : `<button class="btn-done" onclick="markDone('${escAttr(name)}')" title="Phân công trực">✅</button>`}
+      ${isViewOnly ? '' : `
+        <button class="btn-delete" onclick="removeEmployee('${escAttr(name)}')" title="Xóa nhân viên">🗑️</button>
+        <button class="btn-done" onclick="markDone('${escAttr(name)}')" title="Phân công trực">✅</button>
+      `}
     </div>
   `).join('');
 }
