@@ -2,7 +2,6 @@
    PHÂN CÔNG TRỰC – APP.JS
    Auto-increment date, round-robin with reset
    ============================================================ */
-
 // Multi-tenant Room Logic
 const urlParams = new URLSearchParams(window.location.search);
 let currentRoom = urlParams.get('r');
