@@ -681,24 +681,49 @@ function renderDone() {
     return;
   }
 
-  // Only show the last 14 assignments
+  // Gộp các phân công liên tiếp cùng ngày thành 1 dòng
+  const groups = [];
+  for (let i = 0; i < state.assigned.length; i++) {
+    const a = state.assigned[i];
+    const last = groups[groups.length - 1];
+    if (last && last.date === a.date) {
+      last.items.push({ name: a.name, idx: i });
+    } else {
+      groups.push({ date: a.date, items: [{ name: a.name, idx: i }] });
+    }
+  }
+
+  // Chỉ hiển thị đủ groups cuối để cover 14 phân công gần nhất
   const MAX_DISPLAY = 14;
-  const all = state.assigned;
-  const startIdx = Math.max(0, all.length - MAX_DISPLAY);
-  const visible = all.slice(startIdx);
+  let cum = 0;
+  let startGroupIdx = groups.length;
+  for (let i = groups.length - 1; i >= 0; i--) {
+    cum += groups[i].items.length;
+    startGroupIdx = i;
+    if (cum >= MAX_DISPLAY) break;
+  }
+  const visibleGroups = groups.slice(startGroupIdx);
+  const hiddenCount = state.assigned.length - visibleGroups.reduce((s, g) => s + g.items.length, 0);
 
   let html = '';
-  if (startIdx > 0) {
-    html += `<div class="duty-row-hidden">... và ${startIdx} ngày trước đó</div>`;
+  if (hiddenCount > 0) {
+    html += `<div class="duty-row-hidden">... và ${hiddenCount} phân công trước đó</div>`;
   }
-  html += visible.map((a, i) => {
-    const realIdx = startIdx + i;
+  html += visibleGroups.map((g, gi) => {
+    const firstIdx = g.items[0].idx;
+    const numLabel = `${firstIdx + 1}`;
+    const names = g.items
+      .map(it => `<span class="duty-name-part">${escHtml(it.name)}</span>`)
+      .join('<span class="duty-name-sep">+</span>');
+    const undoBtns = isViewOnly ? '' : g.items.map(it =>
+      `<button class="btn-undo" onclick="undoAssign(${it.idx})" title="Hủy: ${escAttr(it.name)}">↩️</button>`
+    ).join('');
     return `
-    <div class="duty-row" style="animation-delay:${i * .04}s">
-      <span class="duty-row-num">${realIdx + 1}</span>
-      <span class="duty-row-name">${escHtml(a.name)}</span>
-      <span class="duty-row-date">${formatDateVN(a.date)}</span>
-      ${isViewOnly ? '' : `<button class="btn-undo" onclick="undoAssign(${realIdx})" title="Hủy phân công">↩️</button>`}
+    <div class="duty-row" style="animation-delay:${gi * .04}s">
+      <span class="duty-row-num">${numLabel}</span>
+      <span class="duty-row-name">${names}</span>
+      <span class="duty-row-date">${formatDateVN(g.date)}</span>
+      ${undoBtns}
     </div>`;
   }).join('');
 
