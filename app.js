@@ -45,6 +45,7 @@ function defaultState() {
     assigned: [],       // current round: [{name, date}]
     nextDate: '',       // ISO string: the next date to assign
     round: 1,
+    perDay: 1,          // số người trực mỗi ngày (1 hoặc 2)
     history: []         // [{round, items:[{name,date}], completedAt}]
   };
 }
@@ -52,7 +53,11 @@ function defaultState() {
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (!s.perDay) s.perDay = 1; // backward compat
+      return s;
+    }
   } catch (_) { /* ignore */ }
   return defaultState();
 }
@@ -76,6 +81,7 @@ async function pushToCloud() {
       assigned: state.assigned,
       nextDate: state.nextDate,
       round: state.round,
+      perDay: state.perDay || 1,
       history: state.history,
       updatedAt: state.updatedAt
     };
@@ -104,13 +110,15 @@ async function pullFromCloud() {
         state.assigned = data.assigned || [];
         state.nextDate = data.nextDate || '';
         state.round = data.round || 1;
+        state.perDay = data.perDay || 1;
         state.history = data.history || [];
         state.updatedAt = data.updatedAt;
-        
+
         if (!isViewOnly) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
         renderAll();
+        updatePerDayUI();
         return true;
       } else {
         // If cloud is empty but we are an admin with data, initialize the cloud
@@ -246,6 +254,15 @@ document.addEventListener('DOMContentLoaded', () => {
   btnImport.addEventListener('click', handleImport);
   btnClearAll.addEventListener('click', handleClearAll);
   btnExport.addEventListener('click', handleExport);
+
+  // Per-day toggle
+  document.querySelectorAll('.perday-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (isViewOnly) return;
+      setPerDay(btn.dataset.perday);
+    });
+  });
+  updatePerDayUI();
   // Cloud Modal
   btnCloud.addEventListener('click', () => {
     cloudUrlInput.value = API_URL;
@@ -347,6 +364,7 @@ function handleAdvancedShare(role) {
       assigned: state.assigned,
       nextDate: state.nextDate,
       round: state.round,
+      perDay: state.perDay || 1,
       history: state.history
     };
     const json = JSON.stringify(shareData);
@@ -425,11 +443,15 @@ function handleClearAll() {
 
 // ── Mark Done (assign) ───────────────────────────────────────
 function markDone(name) {
+  const perDay = state.perDay || 1;
   const assignDate = state.nextDate;
   state.assigned.push({ name, date: assignDate });
 
-  // Advance nextDate by 1 day
-  state.nextDate = addDays(assignDate, 1);
+  // Count how many slots filled on this date — only advance when fully booked
+  const countOnDate = state.assigned.filter(a => a.date === assignDate).length;
+  if (countOnDate >= perDay) {
+    state.nextDate = addDays(assignDate, 1);
+  }
 
   // Check if a full cycle just completed (all employees assigned in this cycle)
   const total = state.employees.length;
@@ -450,24 +472,23 @@ function markDone(name) {
 function undoAssign(idx) {
   if (idx < 0 || idx >= state.assigned.length) return;
 
+  const perDay = state.perDay || 1;
   const removedName = state.assigned[idx].name;
   const removedDate = state.assigned[idx].date;
   state.assigned.splice(idx, 1);
 
-  // Recalculate dates: everyone from idx onward shifts back to fill the gap
-  for (let i = idx; i < state.assigned.length; i++) {
-    if (i === 0) {
-      state.assigned[i].date = removedDate; // take the removed person's date
-    } else {
-      state.assigned[i].date = addDays(state.assigned[i - 1].date, 1);
-    }
-  }
-
-  // Recalculate nextDate
+  // Re-pack dates: each slot i takes base + floor(i / perDay)
   if (state.assigned.length > 0) {
-    state.nextDate = addDays(state.assigned[state.assigned.length - 1].date, 1);
+    const baseDate = idx === 0 ? removedDate : state.assigned[0].date;
+    for (let i = 0; i < state.assigned.length; i++) {
+      state.assigned[i].date = addDays(baseDate, Math.floor(i / perDay));
+    }
+    // nextDate stays on last date if it still has open slot, else advance
+    const lastDate = state.assigned[state.assigned.length - 1].date;
+    const lastCount = state.assigned.filter(a => a.date === lastDate).length;
+    state.nextDate = lastCount >= perDay ? addDays(lastDate, 1) : lastDate;
   } else {
-    state.nextDate = removedDate; // reset to the removed person's date
+    state.nextDate = removedDate;
   }
 
   // Recalculate round based on current assignments
@@ -479,6 +500,38 @@ function undoAssign(idx) {
   saveState();
   renderAll();
   toast('↩️', `Đã hủy phân công: ${removedName} – ngày đã cập nhật lại`);
+}
+
+// ── Toggle Per-Day Mode ──────────────────────────────────────
+function setPerDay(n) {
+  const newPerDay = parseInt(n, 10) === 2 ? 2 : 1;
+  const current = state.perDay || 1;
+  if (current === newPerDay) return;
+
+  state.perDay = newPerDay;
+
+  // Recompute dates of current cycle to match the new packing
+  if (state.assigned.length > 0) {
+    const baseDate = state.assigned[0].date;
+    for (let i = 0; i < state.assigned.length; i++) {
+      state.assigned[i].date = addDays(baseDate, Math.floor(i / newPerDay));
+    }
+    const lastDate = state.assigned[state.assigned.length - 1].date;
+    const lastCount = state.assigned.filter(a => a.date === lastDate).length;
+    state.nextDate = lastCount >= newPerDay ? addDays(lastDate, 1) : lastDate;
+  }
+
+  saveState();
+  updatePerDayUI();
+  renderAll();
+  toast('⚙️', `Đã chuyển sang ${newPerDay} người/ngày`);
+}
+
+function updatePerDayUI() {
+  const cur = state.perDay || 1;
+  document.querySelectorAll('.perday-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.perday, 10) === cur);
+  });
 }
 
 // ── Remove Employee ──────────────────────────────────────────
