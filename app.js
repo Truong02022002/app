@@ -2,6 +2,7 @@
    PHÂN CÔNG TRỰC – APP.JS
    Auto-increment date, round-robin with reset
    ============================================================ */
+
 // Multi-tenant Room Logic
 const urlParams = new URLSearchParams(window.location.search);
 let currentRoom = urlParams.get('r');
@@ -476,16 +477,31 @@ function undoAssign(idx) {
   const removedDate = state.assigned[idx].date;
   state.assigned.splice(idx, 1);
 
-  // Re-pack dates: each slot i takes base + floor(i / perDay)
+  // Chỉ dồn dates từ idx trở đi. Items trước idx (kể cả vòng cũ) giữ nguyên.
+  // Slot trống do removedDate để lại được lấp bằng items kế tiếp theo perDay-pack.
   if (state.assigned.length > 0) {
-    const baseDate = idx === 0 ? removedDate : state.assigned[0].date;
-    for (let i = 0; i < state.assigned.length; i++) {
-      state.assigned[i].date = addDays(baseDate, Math.floor(i / perDay));
+    let slotsBefore = 0;
+    for (let j = idx - 1; j >= 0; j--) {
+      if (state.assigned[j].date === removedDate) slotsBefore++;
+      else break;
     }
-    // nextDate stays on last date if it still has open slot, else advance
+    let curDate = removedDate;
+    let curSlot = slotsBefore;
+    for (let i = idx; i < state.assigned.length; i++) {
+      if (curSlot >= perDay) {
+        curDate = addDays(curDate, 1);
+        curSlot = 0;
+      }
+      state.assigned[i].date = curDate;
+      curSlot++;
+    }
     const lastDate = state.assigned[state.assigned.length - 1].date;
-    const lastCount = state.assigned.filter(a => a.date === lastDate).length;
-    state.nextDate = lastCount >= perDay ? addDays(lastDate, 1) : lastDate;
+    let lastDayCount = 0;
+    for (let j = state.assigned.length - 1; j >= 0; j--) {
+      if (state.assigned[j].date === lastDate) lastDayCount++;
+      else break;
+    }
+    state.nextDate = lastDayCount >= perDay ? addDays(lastDate, 1) : lastDate;
   } else {
     state.nextDate = removedDate;
   }
@@ -509,15 +525,24 @@ function setPerDay(n) {
 
   state.perDay = newPerDay;
 
-  // Recompute dates of current cycle to match the new packing
-  if (state.assigned.length > 0) {
-    const baseDate = state.assigned[0].date;
-    for (let i = 0; i < state.assigned.length; i++) {
-      state.assigned[i].date = addDays(baseDate, Math.floor(i / newPerDay));
+  // Chỉ re-pack vòng đang dở dang. Vòng đã hoàn tất giữ nguyên ngày,
+  // và nextDate tiếp tục từ điểm hiện tại bằng setting mới.
+  const total = state.employees.length;
+  if (total > 0) {
+    const currentCycleCount = state.assigned.length % total;
+    if (currentCycleCount > 0) {
+      const startIdx = state.assigned.length - currentCycleCount;
+      const baseDate = state.assigned[startIdx].date;
+      for (let i = 0; i < currentCycleCount; i++) {
+        state.assigned[startIdx + i].date = addDays(baseDate, Math.floor(i / newPerDay));
+      }
+      const lastDate = state.assigned[state.assigned.length - 1].date;
+      const lastCount = state.assigned
+        .slice(startIdx)
+        .filter(a => a.date === lastDate).length;
+      state.nextDate = lastCount >= newPerDay ? addDays(lastDate, 1) : lastDate;
     }
-    const lastDate = state.assigned[state.assigned.length - 1].date;
-    const lastCount = state.assigned.filter(a => a.date === lastDate).length;
-    state.nextDate = lastCount >= newPerDay ? addDays(lastDate, 1) : lastDate;
+    // currentCycleCount === 0: giữa các vòng, nextDate đã đúng — giữ nguyên.
   }
 
   saveState();
