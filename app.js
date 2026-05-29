@@ -255,6 +255,17 @@ document.addEventListener('DOMContentLoaded', () => {
   btnClearAll.addEventListener('click', handleClearAll);
   btnExport.addEventListener('click', handleExport);
 
+  // Đổi date picker → cập nhật ngày kế tiếp ngay
+  startDateInput.addEventListener('change', () => {
+    if (isViewOnly) return;
+    const newDate = startDateInput.value;
+    if (!newDate || newDate === state.nextDate) return;
+    state.nextDate = newDate;
+    if (state.employees.length > 0) saveState();
+    renderAll();
+    toast('📅', `Ngày kế tiếp: ${formatDateVN(newDate)}`);
+  });
+
   // Per-day toggle
   document.querySelectorAll('.perday-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -730,14 +741,33 @@ function renderDone() {
   listDone.innerHTML = html;
 }
 
+// Derive history từ assigned[]: mỗi chunk `total` entries = 1 vòng đã hoàn tất.
+// Cách này tự đồng bộ với undo/remove/cloud-pull, không cần lưu trữ riêng.
+function getHistory() {
+  const total = state.employees.length;
+  if (total <= 0) return [];
+  const out = [];
+  const numCompleteRounds = Math.floor(state.assigned.length / total);
+  for (let r = 0; r < numCompleteRounds; r++) {
+    const items = state.assigned.slice(r * total, (r + 1) * total);
+    out.push({
+      round: r + 1,
+      items: items,
+      completedAt: items[items.length - 1].date
+    });
+  }
+  return out;
+}
+
 function renderHistory() {
-  if (state.history.length === 0) {
+  const history = getHistory();
+  if (history.length === 0) {
     historySection.style.display = 'none';
     return;
   }
   historySection.style.display = 'block';
 
-  historyList.innerHTML = state.history.slice().reverse().map((h) => {
+  historyList.innerHTML = history.slice().reverse().map((h) => {
     const firstDate = h.items.length > 0 ? formatDateVN(h.items[0].date) : '';
     const lastDate = h.items.length > 0 ? formatDateVN(h.items[h.items.length - 1].date) : '';
     const dateRange = firstDate && lastDate ? `${firstDate} → ${lastDate}` : '';
